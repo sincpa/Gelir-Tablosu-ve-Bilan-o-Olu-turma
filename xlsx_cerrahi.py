@@ -272,11 +272,33 @@ class ExcelCerrah:
         wb = ET.fromstring(self.parcalar["xl/workbook.xml"])
         sheets = wb.find(_q("sheets"))
         silinen_rid = None
-        for sh in list(sheets):
+        silinen_idx = None
+        for i, sh in enumerate(list(sheets)):
             if sh.get("name") == sayfa_adi:
                 silinen_rid = sh.get(f"{{{NS_REL}}}id")
+                silinen_idx = i
                 sheets.remove(sh)
                 break
+
+        # 1b) <definedNames> icindeki bu sayfaya ait kayitlari temizle.
+        # localSheetId, <sheets> listesindeki 0-tabanli sira numarasidir.
+        # Temizlenmezse silinen sayfayi isaret eden veya artik yanlis
+        # sayfayi isaret eden (kaymis) kayitlar kalir; Excel bunu
+        # "dosya bozuk" olarak degerlendirip acmayi reddedebilir.
+        if silinen_idx is not None:
+            defined_names = wb.find(_q("definedNames"))
+            if defined_names is not None:
+                for dn in list(defined_names):
+                    lsid = dn.get("localSheetId")
+                    if lsid is None:
+                        continue
+                    lsid = int(lsid)
+                    if lsid == silinen_idx:
+                        defined_names.remove(dn)
+                    elif lsid > silinen_idx:
+                        dn.set("localSheetId", str(lsid - 1))
+                if len(defined_names) == 0:
+                    wb.remove(defined_names)
 
         # Excel'in acilista tum formulleri yeniden hesaplamasini saglar
         calc = wb.find(_q("calcPr"))
