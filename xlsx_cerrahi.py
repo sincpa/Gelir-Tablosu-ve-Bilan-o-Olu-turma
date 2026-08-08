@@ -300,6 +300,23 @@ class ExcelCerrah:
                 if len(defined_names) == 0:
                     wb.remove(defined_names)
 
+            # 1c) <bookViews><workbookView activeTab=".."/> de ayni sekilde
+            # sayfa index'ine isaret eder. Silinen sayfa aktif sekmeyse
+            # veya index kaymasindan sonra sinirin disinda kalirsa, Excel
+            # gecersiz bir sekmeyi acmaya calisir ve dosyayi bozuk sayar.
+            book_views = wb.find(_q("bookViews"))
+            if book_views is not None:
+                for wv in book_views:
+                    for oznitelik in ("activeTab", "firstSheet"):
+                        deger = wv.get(oznitelik)
+                        if deger is None:
+                            continue
+                        deger = int(deger)
+                        if deger == silinen_idx:
+                            wv.set(oznitelik, "0")
+                        elif deger > silinen_idx:
+                            wv.set(oznitelik, str(deger - 1))
+
         # Excel'in acilista tum formulleri yeniden hesaplamasini saglar
         calc = wb.find(_q("calcPr"))
         if calc is None:
